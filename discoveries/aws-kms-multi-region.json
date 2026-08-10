@@ -1,0 +1,32 @@
+{
+  "id": "aws-kms-multi-region-2021-06-16",
+  "title": "AWS KMS multi-Region keys",
+  "category": "established",
+  "discovered_on": "2026-08-10",
+  "evidence_window": {
+    "start": "2026-07-11",
+    "end": "2026-08-10"
+  },
+  "summary": "A KMS multi-Region primary and its replicas share key material and a key ID so compatible workloads can use related keys in multiple Regions without cross-Region KMS calls.",
+  "why_it_matters": "The capability can simplify client-side encryption, cross-Region signing, active-active workloads, and disaster recovery that must use the same cryptographic material.",
+  "caveats": [
+    "AWS launched this capability in 2021; it is cataloged here as established, not new.",
+    "Terraform still declares a primary key and a replica in every selected Region; this is not one global resource.",
+    "Policies, grants, aliases, tags, descriptions, and enabled state are regional and require independent review.",
+    "Existing single-Region KMS keys cannot be converted to multi-Region keys.",
+    "Each related key is billed separately, and AWS recommends single-Region keys for most workloads."
+  ],
+  "adoption_question": "Does a concrete client-side encryption, signing, active-active, or disaster-recovery requirement justify shared key material and the larger regional policy surface?",
+  "confidence": "high",
+  "disposition": "accepted",
+  "sources": [
+    {
+      "title": "AWS KMS introduces multi-Region keys",
+      "url": "https://aws.amazon.com/about-aws/whats-new/2021/06/kms-multi-region-keys/",
+      "published_on": "2021-06-16",
+      "first_party": true
+    }
+  ],
+  "example": "examples/aws/kms-multi-region/",
+  "example_reason": "A mocked Terraform plan can expose the separate regional resources and unsynchronized aliases without authenticating to AWS."
+}

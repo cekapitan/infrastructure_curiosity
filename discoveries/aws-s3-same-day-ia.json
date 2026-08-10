@@ -1,0 +1,30 @@
+{
+  "id": "aws-s3-same-day-ia-2026-07-16",
+  "title": "Amazon S3 permits same-day lifecycle transitions to Standard-IA and One Zone-IA",
+  "category": "new",
+  "discovered_on": "2026-08-10",
+  "evidence_window": {
+    "start": "2026-07-11",
+    "end": "2026-08-10"
+  },
+  "summary": "S3 Lifecycle configurations can now transition new objects to S3 Standard-Infrequent Access or S3 One Zone-Infrequent Access without first retaining them in S3 Standard for 30 days.",
+  "why_it_matters": "Teams can move immediately cold backups, logs, and compliance objects into an infrequent-access class while keeping the lifecycle policy declarative.",
+  "caveats": [
+    "Standard-IA and One Zone-IA still have minimum billable object-size and storage-duration rules.",
+    "One Zone-IA stores data in one Availability Zone and is inappropriate when multi-AZ resilience is required.",
+    "A cost model should include retrieval charges, object size, retention, and access frequency before adoption."
+  ],
+  "adoption_question": "Which object prefixes become cold on creation, and do their size, retrieval, resilience, and retention characteristics make an immediate IA transition cheaper?",
+  "confidence": "high",
+  "disposition": "accepted",
+  "sources": [
+    {
+      "title": "Amazon S3 removes 30-day minimum storage duration for lifecycle transitions to S3 Standard-IA and S3 One Zone-IA",
+      "url": "https://aws.amazon.com/about-aws/whats-new/2026/07/s3-removes-30-day-transitions-standard-ia-one-zone-ia/",
+      "published_on": "2026-07-16",
+      "first_party": true
+    }
+  ],
+  "example": "examples/aws/s3-same-day-ia/",
+  "example_reason": "A mocked Terraform test can prove that a zero-day transition is represented without calling AWS."
+}

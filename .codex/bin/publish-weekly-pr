@@ -1,0 +1,160 @@
+#!/bin/sh
+
+set -eu
+
+umask 077
+
+readonly SAFE_PATH="/Users/codyes18/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+readonly EXPECTED_SELF="/Users/codyes18/workspace/github.com/cekapitan/infrastructure_curiosity/.codex/bin/publish-weekly-pr"
+readonly EXPECTED_REMOTE_HTTPS="https://github.com/cekapitan/infrastructure_curiosity.git"
+readonly EXPECTED_REMOTE_SSH="git@github.com:cekapitan/infrastructure_curiosity.git"
+readonly EXPECTED_REPOSITORY="cekapitan/infrastructure_curiosity"
+
+PATH="$SAFE_PATH"
+export PATH
+
+fail() {
+  printf '%s\n' "weekly publisher: $*" >&2
+  exit 1
+}
+
+if [ "$#" -ne 0 ]; then
+  fail "arguments are not accepted"
+fi
+
+if [ "$0" != "$EXPECTED_SELF" ]; then
+  fail "invoke the trusted publisher at its fixed absolute path"
+fi
+
+repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || fail "not inside a Git worktree"
+cd "$repo_root"
+
+remote_url="$(git remote get-url origin 2>/dev/null)" || fail "origin is missing"
+case "$remote_url" in
+  "$EXPECTED_REMOTE_HTTPS"|"$EXPECTED_REMOTE_SSH") ;;
+  *) fail "origin is not $EXPECTED_REPOSITORY" ;;
+esac
+
+git rev-parse --verify refs/remotes/origin/main >/dev/null 2>&1 || fail "origin/main is unavailable"
+head_commit="$(git rev-parse HEAD)"
+base_commit="$(git rev-parse refs/remotes/origin/main)"
+if [ "$head_commit" != "$base_commit" ]; then
+  fail "the worktree must start exactly at origin/main"
+fi
+
+if [ -n "$(git diff --name-only --diff-filter=D HEAD)" ]; then
+  fail "weekly automation may not delete tracked files"
+fi
+
+if [ -n "$(git diff --name-only --diff-filter=R HEAD)" ]; then
+  fail "weekly automation may not rename tracked files"
+fi
+
+paths_file="$(mktemp "${TMPDIR:-/tmp}/infrastructure-curiosity-paths.XXXXXX")"
+terraform_files="$(mktemp "${TMPDIR:-/tmp}/infrastructure-curiosity-terraform.XXXXXX")"
+test_files="$(mktemp "${TMPDIR:-/tmp}/infrastructure-curiosity-tests.XXXXXX")"
+cleanup() {
+  rm -f "$paths_file" "$terraform_files" "$test_files"
+}
+trap cleanup EXIT HUP INT TERM
+
+{
+  git diff --name-only --diff-filter=ACMTUXB HEAD
+  git ls-files --others --exclude-standard
+} | LC_ALL=C sort -u >"$paths_file"
+
+if [ ! -s "$paths_file" ]; then
+  printf '%s\n' "weekly publisher: no qualifying changes; nothing to publish"
+  exit 0
+fi
+
+while IFS= read -r path; do
+  case "$path" in
+    *[!A-Za-z0-9._/-]*) fail "unsafe path: $path" ;;
+  esac
+
+  case "$path" in
+    .github/*|.codex/*|scripts/*|automation/*|tests/*|Makefile)
+      fail "protected repository boundary may not change: $path"
+      ;;
+    README.md|docs/weekly/*.md|discoveries/*.json) ;;
+    examples/*.tf|examples/*.tftest.hcl|examples/*.md|examples/*.lock.hcl) ;;
+    *) fail "path is outside the weekly allowlist: $path" ;;
+  esac
+
+  if [ ! -f "$path" ] || [ -L "$path" ]; then
+    fail "weekly artifacts must be regular files: $path"
+  fi
+  if [ -x "$path" ]; then
+    fail "weekly automation may not add or change executable files: $path"
+  fi
+done <"$paths_file"
+
+for json_file in discoveries/*.json; do
+  [ -e "$json_file" ] || continue
+  python3 -m json.tool "$json_file" >/dev/null || fail "invalid JSON: $json_file"
+done
+
+find examples -type f \( -name '*.tf' -o -name '*.tftest.hcl' \) -print >"$terraform_files"
+while IFS= read -r terraform_file; do
+  if grep -Eiq '(^|[[:space:]])(backend|cloud|provisioner|module)[[:space:]]*("[^" ]+")?[[:space:]]*\{' "$terraform_file"; then
+    fail "remote backends, provisioners, and modules are forbidden: $terraform_file"
+  fi
+  if grep -Eiq '^[[:space:]]*data[[:space:]]+"' "$terraform_file"; then
+    fail "live data sources are forbidden: $terraform_file"
+  fi
+  if grep -Eiq '(local-exec|remote-exec|terraform_remote_state)' "$terraform_file"; then
+    fail "execution and remote state primitives are forbidden: $terraform_file"
+  fi
+  if grep -E '^[[:space:]]*source[[:space:]]*=' "$terraform_file" | grep -Ev 'hashicorp/aws' >/dev/null 2>&1; then
+    fail "only the HashiCorp AWS provider is accepted: $terraform_file"
+  fi
+done <"$terraform_files"
+
+find examples -type f -name '*.tftest.hcl' -print >"$test_files"
+while IFS= read -r test_file; do
+  grep -Eq '^[[:space:]]*mock_provider[[:space:]]+"aws"' "$test_file" || fail "Terraform tests must mock AWS: $test_file"
+  grep -Eq '^[[:space:]]*command[[:space:]]*=[[:space:]]*plan([[:space:]]|$)' "$test_file" || fail "Terraform tests must contain a plan-only run: $test_file"
+  if grep -Eiq 'command[[:space:]]*=[[:space:]]*(apply|destroy|refresh|import)|override_during[[:space:]]*=[[:space:]]*apply' "$test_file"; then
+    fail "non-plan Terraform test behavior is forbidden: $test_file"
+  fi
+done <"$test_files"
+
+make gate
+
+run_date="$(date +%Y-%m-%d)"
+iso_week="$(date +%G-W%V)"
+branch="automation/infrastructure-curiosity-$iso_week"
+
+if git show-ref --verify --quiet "refs/heads/$branch"; then
+  fail "local branch already exists: $branch"
+fi
+if git ls-remote --exit-code --heads origin "refs/heads/$branch" >/dev/null 2>&1; then
+  fail "remote branch already exists: $branch"
+fi
+
+git switch --create "$branch"
+
+while IFS= read -r path; do
+  git add -- "$path"
+done <"$paths_file"
+
+git diff --cached --check
+git commit -m "chore: refresh infrastructure curiosity for $run_date"
+git push --set-upstream origin "HEAD:refs/heads/$branch"
+
+pr_url="$(gh pr create \
+  --repo "$EXPECTED_REPOSITORY" \
+  --base main \
+  --head "$branch" \
+  --title "Weekly infrastructure curiosity: $run_date" \
+  --body "Automated weekly infrastructure and cloud-tool research for $run_date.
+
+- Community leads were discovered with the installed last30days skill.
+- Accepted claims require dated first-party corroboration.
+- The repository gate passed.
+- No infrastructure was provisioned.
+
+Human review is required; this automation cannot merge or push to main.")" || fail "the branch was pushed but pull-request creation failed"
+
+printf '%s\n' "weekly publisher: opened $pr_url"

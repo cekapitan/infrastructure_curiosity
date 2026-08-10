@@ -1,0 +1,30 @@
+{
+  "id": "aws-cost-estimate-incident-2026-07-20",
+  "title": "AWS inaccurate estimated billing data triggered erroneous cost alerts",
+  "category": "operational-lesson",
+  "discovered_on": "2026-08-10",
+  "evidence_window": {
+    "start": "2026-07-11",
+    "end": "2026-08-10"
+  },
+  "summary": "AWS reported that inaccurate Cost Explorer estimated billing data caused erroneous budget and cost-anomaly alerts before the issue was resolved.",
+  "why_it_matters": "A budget alarm is an important signal, but it is not an independent enforcement boundary when its upstream estimate can be wrong.",
+  "caveats": [
+    "Do not suppress cost alarms simply because one provider incident produced false positives.",
+    "Service quotas and workload-level limits cover different failure modes and are not substitutes for billing alerts.",
+    "Each team needs a documented escalation path for validating an anomalous cost signal."
+  ],
+  "adoption_question": "Which independent usage, quota, architectural, and workload signals would still constrain damage or speed triage if the provider cost estimate were wrong?",
+  "confidence": "high",
+  "disposition": "accepted",
+  "sources": [
+    {
+      "title": "AWS Weekly Roundup: One-click Lambda setup, OpenAI GPT-5.6 models on Bedrock, and more (July 20, 2026)",
+      "url": "https://aws.amazon.com/blogs/aws/aws-weekly-roundup-one-click-lambda-setup-prompt-openai-gpt-5-6-models-on-bedrock-and-more-july-20-2026/",
+      "published_on": "2026-07-20",
+      "first_party": true
+    }
+  ],
+  "example": null,
+  "example_reason": "The useful artifact is an operational control review; a synthetic resource would imply protection that a static example cannot provide."
+}

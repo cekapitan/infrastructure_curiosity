@@ -1,0 +1,16 @@
+.DS_Store
+.artifacts/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+**/.terraform/*
+!**/.terraform.lock.hcl
+.terraformrc
+terraform.rc
+__pycache__/
+*.py[cod]

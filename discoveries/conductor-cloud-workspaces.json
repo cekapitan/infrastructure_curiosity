@@ -1,0 +1,30 @@
+{
+  "id": "conductor-cloud-workspaces-2026-07-30",
+  "title": "Conductor Cloud persistent workspaces for coding-agent teams",
+  "category": "tool-watch",
+  "discovered_on": "2026-08-10",
+  "evidence_window": {
+    "start": "2026-07-11",
+    "end": "2026-08-10"
+  },
+  "summary": "Conductor introduced persistent cloud workspaces built on isolated microVMs, with share links, multiplayer access, and an API for agent-driven development environments.",
+  "why_it_matters": "Infrastructure teams are moving some coding-agent execution from laptop worktrees to persistent shared environments, shifting isolation, identity, audit, secret, network, and cost controls into the platform evaluation.",
+  "caveats": [
+    "A vendor launch is a signal to evaluate, not evidence that the service meets an organization's security or reliability requirements.",
+    "Persistent workspaces expand the lifecycle of source code, credentials, logs, and network access beyond a laptop session.",
+    "Pricing, regional availability, enterprise controls, data handling, and deletion guarantees need first-hand validation before adoption."
+  ],
+  "adoption_question": "Can the platform demonstrate least-privilege identity, secret isolation, egress policy, auditability, retention controls, incident response, and bounded per-workspace cost?",
+  "confidence": "medium",
+  "disposition": "accepted",
+  "sources": [
+    {
+      "title": "Conductor changelog: Introducing Conductor Cloud",
+      "url": "https://www.conductor.build/changelog",
+      "published_on": "2026-07-30",
+      "first_party": true
+    }
+  ],
+  "example": null,
+  "example_reason": "This is an evaluation checklist for an external platform; a local infrastructure stub would not test its security or operational properties."
+}
