@@ -1,0 +1,5 @@
+{
+  "name": "Infrastructure Curiosity",
+  "user": "ubuntu",
+  "install": "./.cursor/install.sh"
+}
